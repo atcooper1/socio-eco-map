@@ -1,0 +1,152 @@
+<html lang="en">
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>socio-eco Map</title>
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.14.0/mapbox-gl.css" rel="stylesheet" />
+
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100%; height: 100vh; }
+
+    #legend {
+  position: absolute;
+  bottom: 30px;
+  left: 20px;
+  background: white;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  z-index: 9999;
+}
+
+#legend h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  background-color: #dc143c; /* same red as points */
+  border-radius: 50%;
+  margin-right: 8px;
+}
+  </style>
+</head>
+
+<body>
+<div id="map"></div>
+<div id="legend">
+  <h4>Legend</h4>
+
+  <div class="legend-item">
+    <span class="legend-color"></span>
+    <span>NRMN site</span>
+  </div>
+</div>
+
+<script>
+
+mapboxgl.accessToken = 'pk.eyJ1IjoidG9uZWNvb3BzIiwiYSI6ImNsNnZ1MWFxcTFuZGUza2xqYzByejBkcGcifQ.1J9w7FQ1Wkg_nbvg4mOhgA';
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/tonecoops/cmpup5u3j006k01sy226j8hio',
+  center: [147, -40],
+  zoom: 4
+});
+
+map.on('load', () => {
+
+  // 🔹 Load your GeoJSON
+  fetch('aus_sites.geojson')
+    .then(res => res.json())
+    .then(data => {
+
+      map.addSource('aus_sites', {
+        type: 'geojson',
+        data: data
+      });
+
+      // 🔹 Add pins (circles for now)
+      map.addLayer({
+        id: 'sites-layer',
+        type: 'circle',
+        source: 'aus_sites',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#dc143c'
+        }
+      });
+
+      map.addLayer({
+  id: 'site-labels',
+  type: 'symbol',
+  source: 'aus_sites',
+  layout: {
+    'text-field': ['get', 'site_code'],
+    'text-size': 11,
+    'text-offset': [0, 1.2],
+    'text-anchor': 'top'
+  },
+  paint: {
+    'text-color': '#000000',
+    'text-halo-color': '#ffffff',
+    'text-halo-width': 1.5
+  }
+});
+
+      // 🔹 Popups
+      map.on('click', 'sites-layer', (e) => {
+        const p = e.features[0].properties;
+        const mpa = p.mpa && p.mpa !== 'null' ? p.mpa : 'None';
+
+        new mapboxgl.Popup({ maxWidth: '320px' })
+          .setLngLat(e.lngLat)
+          .setHTML(`
+            <div style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6">
+              <h3 style="margin:0 0 6px;font-size:15px">${p.site_name}</h3>
+              <table style="border-collapse:collapse;width:100%">
+                <tr><td style="color:#666;padding-right:8px">Site code</td><td><b>${p.site_code}</b></td></tr>
+                <tr><td style="color:#666;padding-right:8px">Location</td><td>${p.location}</td></tr>
+                <tr><td style="color:#666;padding-right:8px">Marine park</td><td>${mpa}</td></tr>
+                <tr><td style="color:#666;padding-right:8px">Protection</td><td>${p.protection_status}</td></tr>
+                <tr><td style="color:#666;padding-right:8px">Program</td><td>${p.program}</td></tr>
+                <tr><td style="color:#666;padding-right:8px">Avg depth (m)</td><td>${p.avg_depth}</td></tr>
+                <tr><td style="color:#666;padding-right:8px">Total surveys</td><td>${p.total_surveys}</td></tr>
+                <tr><td style="color:#666;padding-right:8px">First survey</td><td>${p.first_survey_date}</td></tr>
+                <tr><td style="color:#666;padding-right:8px">Last survey</td><td>${p.last_survey_date}</td></tr>
+                <tr><td style="color:#666;padding-right:8px">Coordinates</td><td>${p.latitude}, ${p.longitude}</td></tr>
+              </table>
+            </div>
+          `)
+          .addTo(map);
+      });
+
+      // 🔹 Cursor change
+      map.on('mouseenter', 'sites-layer', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+
+      map.on('mouseleave', 'sites-layer', () => {
+        map.getCanvas().style.cursor = '';
+      });
+
+    });
+
+});
+
+</script>
+</body>
+</html>
